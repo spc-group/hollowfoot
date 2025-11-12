@@ -14,7 +14,10 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 keywords = []
-dependencies = []
+dependencies = [
+    "numpy",
+    "xraylarch",
+]
 
 [dependency-groups]
 dev = ["black", "pytest", "ruff", "isort", "mypy"]
