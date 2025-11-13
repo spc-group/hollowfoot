@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from collections.abc import Sequence, Iterable, Callable, Mapping
 from functools import wraps
 from typing import Any
+import warnings
 
 from larch.symboltable import Group
 
@@ -47,3 +48,18 @@ class BaseAnalysis:
         self.groups = groups
         self.operations = operations
         self.past_operations = past_operations
+
+    def calculate(self):
+        """Apply all pending operations and produce a new analysis object."""
+        groups = self.groups
+        operations = self.operations
+        for op in self.operations:
+            groups = op.func(list(groups), *op.args, **op.kwargs)
+        groups = tuple(groups)
+        if len(groups) == 0:
+            warnings.warn(f"Operation {op} produced 0 valid groups")
+        return type(self)(
+            tuple(groups),
+            operations=[],
+            past_operations=(*self.past_operations, *operations),
+        )

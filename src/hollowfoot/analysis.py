@@ -12,21 +12,10 @@ import numpy as np
 from larch.io import merge_groups, read_ascii
 from larch.plot import bokeh_xafsplots as xafsplots
 from larch.symboltable import Group
-from larch.xafs import pre_edge
+from larch.xafs import pre_edge, autobk
 from larch.symboltable import Group
 
 from hollowfoot.base_analysis import BaseAnalysis, operation
-
-
-
-
-# BAD_CHARS = ",#@%|:* "
-
-
-# def clean_group_name(value: str):
-#     for bchar in BAD_CHARS:
-#         value = value.replace(bchar, "_").lower()
-#     return value
 
 
 class Analysis(BaseAnalysis):
@@ -44,33 +33,14 @@ class Analysis(BaseAnalysis):
         reference: str | None = None,
         is_transmission=False,
     ):
+        
         for group in groups:
-            try:
-                ydata = getattr(group, signal)
-                rdata = getattr(group, reference) if reference is not None else 1
-            except AttributeError as exc:
-                # Incomplete scan, so skip it
-                warnings.warn(
-                    f"Could not read column: {exc} from {group}. Removing this scan from analysis."
-                )
-                continue
+            ydata = getattr(group, signal)
+            rdata = getattr(group, reference) if reference is not None else 1
             mu = ydata / rdata
             if is_transmission:
                 mu = -np.log(mu)
             yield Group(mu=mu, energy=getattr(group, energy))
-
-    def calculate(self):
-        """Apply all pending operations and produce a new analysis object."""
-        groups = self.groups
-        operations = self.operations
-        for op in self.operations:
-            groups = op.func(list(groups), *op.args, **op.kwargs)
-
-        return Analysis(
-            tuple(groups),
-            operations=[],
-            past_operations=(*self.past_operations, *operations),
-        )
 
     def summarize(self):
         new_analysis = self.calculate()
@@ -116,5 +86,12 @@ class Analysis(BaseAnalysis):
         for group in groups:
             new_group = copy(group)
             pre_edge(new_group, *args, **kwargs)
+            yield new_group
+
+    @operation(desc="subtract background to produce χ(k)")
+    def subtract_background(groups, *args, **kwargs):
+        for group in groups:
+            new_group = copy(group)
+            autobk(new_group, *args, **kwargs)
             yield new_group
 

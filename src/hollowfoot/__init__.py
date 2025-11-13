@@ -1,5 +1,6 @@
 from ._version import get_versions
 from .analysis import Analysis, operation  # noqa: F401
+from .readers import read_aps_20bmb  # noqa: F401
 
 __version__ = get_versions()["version"]
 del get_versions

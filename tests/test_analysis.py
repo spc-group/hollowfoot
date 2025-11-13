@@ -15,6 +15,7 @@ def group():
     )
     return grp
 
+
 def test_to_mu(group):
     anl = (
         Analysis(groups=(group,))
@@ -22,3 +23,12 @@ def test_to_mu(group):
         .calculate()
     )
     assert anl.groups[0].mu == np.log(group.I0/group.It)
+
+def test_to_mu_missing_keys(group):
+    # What if none of the groups have the requested key
+    anl = (
+        Analysis(groups=(group,))
+        .to_mu("mono_energy", "Inull", "I0", is_transmission=True)
+    )
+    with pytest.raises(AttributeError):
+        anl.calculate()
