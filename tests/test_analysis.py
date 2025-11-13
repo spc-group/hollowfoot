@@ -1,34 +1,26 @@
-import pytest
-
 from larch.symboltable import Group
 import numpy as np
 
 from hollowfoot import Analysis, operation
 
 
-@pytest.fixture()
-def group():
-    grp = Group(
-        mono_energy=np.linspace(8320, 8350, num=1),
-        It=np.sin(np.pi*4) + 1.5,
-        I0=np.cos(np.pi*6) + 1.5,
-    )
-    return grp
+class TestAnalysis(Analysis):
+    @operation(desc="run test code")
+    def noop(self, color="red"):
+        pass
 
 
-def test_to_mu(group):
-    anl = (
-        Analysis(groups=(group,))
-        .to_mu("mono_energy", "It", "I0", is_transmission=True)
-        .calculate()
-    )
-    assert anl.groups[0].mu == np.log(group.I0/group.It)
 
-def test_to_mu_missing_keys(group):
-    # What if none of the groups have the requested key
-    anl = (
-        Analysis(groups=(group,))
-        .to_mu("mono_energy", "Inull", "I0", is_transmission=True)
-    )
-    with pytest.raises(AttributeError):
-        anl.calculate()
+def test_analysis_chaining():
+    group = Group(x=np.linspace(0, 100, num=19))
+    anl = TestAnalysis((group,))
+    new_anl = anl.noop()
+    assert isinstance(new_anl, Analysis)
+    assert new_anl is not anl
+
+
+def test_operation_adds_to_stack():
+
+    anl = TestAnalysis().noop()
+    assert len(anl.operations) == 1
+    assert anl.operations[0].desc == "run test code"
