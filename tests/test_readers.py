@@ -43,7 +43,7 @@ def test_resolve_file_regex(tmp_path):
     assert resolved == [good_path]
 
 
-def test_from_aps_20bmb(tmp_path):
+def test_read_aps_20bmb(tmp_path):
     data_file = data_dir / "Ni-foil-EXAFS.0002"
-    analysis = read_aps_20bmb(data_file)
-    assert len(analysis.groups) == 1
+    groups = read_aps_20bmb(data_file)
+    assert len(groups) == 1

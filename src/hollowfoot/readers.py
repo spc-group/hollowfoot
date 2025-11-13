@@ -5,8 +5,6 @@ from collections.abc import Sequence, Callable
 from larch.symboltable import Group
 from larch.io import read_ascii
 
-from hollowfoot.analysis import Analysis
-
 
 def resolve_file_paths(base: Path, glob: str = "", regex: str = "") -> list[Path]:
     """Figures out which files in a *base* path match the glob and
@@ -56,7 +54,7 @@ def read_text_files(
         yield maybe_group
 
 
-def read_aps_20bmb(base: str | Path, glob: str = "", regex: str = "") -> Analysis:
+def read_aps_20bmb(base: str | Path, glob: str = "", regex: str = "") -> list[Group]:
     """Read XAFS data measured at APS beamline 20-BM-B.
 
     The first argument can be either a specific file to read, or a
@@ -92,4 +90,4 @@ def read_aps_20bmb(base: str | Path, glob: str = "", regex: str = "") -> Analysi
         return read_ascii(fp)
 
     groups = list(read_text_files(paths, reader))
-    return Analysis(groups)
+    return groups
