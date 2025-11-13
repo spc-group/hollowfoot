@@ -1,9 +1,10 @@
 import re
+from collections.abc import Callable, Generator, Sequence
 from pathlib import Path
-from collections.abc import Sequence, Callable
+from typing import Any
 
-from larch.symboltable import Group
 from larch.io import read_ascii
+from larch.symboltable import Group
 
 
 def resolve_file_paths(base: Path, glob: str = "", regex: str = "") -> list[Path]:
@@ -29,12 +30,16 @@ def resolve_file_paths(base: Path, glob: str = "", regex: str = "") -> list[Path
 
 class NotADataFile:
     """Sentinel for if a specific file should be skipped because it has no data."""
+
     pass
 
 
 def read_text_files(
-        paths: Sequence[Path], reader: Callable[[Path, ...], Group], glob: str = "", regex="",
-) -> Sequence[Group]:
+    paths: Sequence[Path],
+    reader: Callable[[Path], Group],
+    glob: str = "",
+    regex="",
+) -> Generator[Group, Any, None]:
     """Iterate data groups from text files.
 
     Useful for making beamline-specific input functions.
@@ -64,7 +69,7 @@ def read_aps_20bmb(base: str | Path, glob: str = "", regex: str = "") -> list[Gr
     using either globs or regular expressions:
 
     .. code-block:: python
-    
+
         read_aps_20bmb_
 
     Parameters
@@ -83,7 +88,7 @@ def read_aps_20bmb(base: str | Path, glob: str = "", regex: str = "") -> list[Gr
 
     """
     paths = resolve_file_paths(Path(base), glob=glob, regex=regex)
-    
+
     def reader(fp):
         if fp.suffix == ".last":
             return NotADataFile()

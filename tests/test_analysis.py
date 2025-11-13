@@ -1,7 +1,7 @@
 from pathlib import Path
 
-from larch.symboltable import Group
 import numpy as np
+from larch.symboltable import Group
 
 from hollowfoot import Analysis, operation
 

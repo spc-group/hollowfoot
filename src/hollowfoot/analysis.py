@@ -1,20 +1,25 @@
-from pathlib import Path
-from dataclasses import dataclass
-from collections.abc import Sequence, Iterable, Callable, Mapping
-from functools import wraps
-from typing import Any
 import warnings
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
+from functools import wraps
+from pathlib import Path
+from typing import Any, Protocol
 
 from larch.symboltable import Group
 
 from .readers import read_aps_20bmb
+
+
+class OperatorFunction(Protocol):
+    def __call__(self, groups: Sequence[Group], *args, **kwargs) -> list[Group]: ...
+
 
 @dataclass(frozen=True)
 class Operation:
     """A discrete computational unit of analysis."""
 
     desc: str
-    func: Callable[[Sequence[Group], ...], Sequence[Group]]
+    func: OperatorFunction
     args: tuple[Any, ...]
     kwargs: Mapping[Any, Any]
 
@@ -22,9 +27,9 @@ class Operation:
 def operation(desc: str):
     """A decorator that"""
 
-    def wrapper(fn: Callable[[Sequence[Group], ...], Sequence[Group]]):
+    def wrapper(fn: OperatorFunction):
         @wraps(fn)
-        def inner(analysis: "BaseAnalysis", *args, **kwargs) -> "BaseAnalysis":
+        def inner(analysis: "Analysis", *args, **kwargs) -> "Analysis":
             new_operation = Operation(desc=desc, func=fn, args=args, kwargs=kwargs)
             new_analysis = type(analysis)(
                 groups=analysis.groups,
@@ -39,7 +44,7 @@ def operation(desc: str):
 
 
 class Analysis:
-    groups: Sequence[Group]
+    groups: Iterable[Group]
     operations: tuple[Operation, ...]
 
     def __init__(
@@ -68,7 +73,9 @@ class Analysis:
         )
 
     @classmethod
-    def from_aps_20bmb(cls, base: str | Path, glob: str = "", regex: str = "") -> "Analysis":
+    def from_aps_20bmb(
+        cls, base: str | Path, glob: str = "", regex: str = ""
+    ) -> "Analysis":
         """Read XAFS data measured at APS beamline 20-BM-B.
 
         The first argument can be either a specific file to read, or a

@@ -1,19 +1,12 @@
-import warnings
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Sequence
 from copy import copy
 from functools import wraps
-from pathlib import Path
-from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
-from functools import wraps
-from typing import Any
 
 import numpy as np
-from larch.io import merge_groups, read_ascii
+from larch.io import merge_groups
 from larch.plot import bokeh_xafsplots as xafsplots
 from larch.symboltable import Group
-from larch.xafs import pre_edge, autobk
-from larch.symboltable import Group
+from larch.xafs import autobk, pre_edge
 
 from hollowfoot.analysis import Analysis, operation
 
@@ -33,7 +26,7 @@ class XAFSAnalysis(Analysis):
         reference: str | None = None,
         is_transmission=False,
     ):
-        
+
         for group in groups:
             ydata = getattr(group, signal)
             rdata = getattr(group, reference) if reference is not None else 1
@@ -94,4 +87,3 @@ class XAFSAnalysis(Analysis):
             new_group = copy(group)
             autobk(new_group, *args, **kwargs)
             yield new_group
-
