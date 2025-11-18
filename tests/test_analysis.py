@@ -1,3 +1,4 @@
+from inspect import BoundArguments
 from pathlib import Path
 
 import numpy as np
@@ -33,11 +34,12 @@ def test_operation_adds_to_stack():
     assert anl.operations[0].desc == "run test code"
 
 
-# def test_operation_binds_arguments():
-#     """Check that an operation includes bound arguments in it's attributes."""
-#     anl = TestAnalysis().noop()
-#     (op,) = anl.operations
-#     assert isinstance(op.bound_arguments, BoundArguments)
+def test_operation_binds_arguments():
+    """Check that an operation includes bound arguments in it's attributes."""
+    anl = TestAnalysis(groups=(Group,)).noop().calculate()
+    (group,) = anl.groups
+    (op,) = group.past_operations
+    assert isinstance(op.bound_arguments, BoundArguments)
 
 
 def test_read_aps_20bmb(tmp_path):

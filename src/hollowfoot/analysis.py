@@ -2,6 +2,7 @@ import warnings
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from functools import wraps
+from inspect import BoundArguments, signature
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -13,7 +14,7 @@ class OperatorFunction(Protocol):
     def __call__(self, groups: Sequence[Group], *args, **kwargs) -> list[Group]: ...
 
 
-@dataclass(frozen=True)
+@dataclass()
 class Operation:
     """A discrete computational unit of analysis."""
 
@@ -21,6 +22,7 @@ class Operation:
     func: OperatorFunction
     args: tuple[Any, ...]
     kwargs: Mapping[Any, Any]
+    bound_arguments: BoundArguments | None = None
 
 
 def operation(desc: str):
@@ -55,10 +57,12 @@ class Analysis:
 
     def calculate(self):
         """Apply all pending operations and produce a new analysis object."""
-        groups = self.groups
+        groups = list(self.groups)
         operations = self.operations
         for op in self.operations:
-            groups = op.func(list(groups), *op.args, **op.kwargs)
+            op.bound_arguments = signature(op.func).bind(groups, *op.args, **op.kwargs)
+            print(op)
+            groups = op.func(groups, *op.args, **op.kwargs)
         groups = tuple(groups)
         # Keep track of the operations that have already been performed on the groups
         for group in groups:

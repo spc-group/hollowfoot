@@ -6,4 +6,8 @@ __all__ = ["Group"]
 
 
 class Group(LarchGroup):
-    past_operations: Sequence = ()
+    past_operations: Sequence
+
+    def __init__(self, *args, **kwargs):
+        self.past_operations = ()
+        super().__init__(*args, **kwargs)
