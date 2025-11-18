@@ -5,8 +5,7 @@ from functools import wraps
 from pathlib import Path
 from typing import Any, Protocol
 
-from larch.symboltable import Group
-
+from .group import Group
 from .readers import read_aps_20bmb
 
 
@@ -34,7 +33,6 @@ def operation(desc: str):
             new_analysis = type(analysis)(
                 groups=analysis.groups,
                 operations=(*analysis.operations, new_operation),
-                past_operations=analysis.past_operations,
             )
             return new_analysis
 
@@ -51,11 +49,9 @@ class Analysis:
         self,
         groups: Iterable[Group] = (),
         operations: tuple[Operation, ...] = (),
-        past_operations: tuple[Operation, ...] = (),
     ):
         self.groups = groups
         self.operations = operations
-        self.past_operations = past_operations
 
     def calculate(self):
         """Apply all pending operations and produce a new analysis object."""
@@ -64,12 +60,17 @@ class Analysis:
         for op in self.operations:
             groups = op.func(list(groups), *op.args, **op.kwargs)
         groups = tuple(groups)
+        # Keep track of the operations that have already been performed on the groups
+        for group in groups:
+            group.past_operations = (
+                *getattr(group, "past_operations", ()),
+                *operations,
+            )
         if len(groups) == 0:
             warnings.warn(f"Operation {op} produced 0 valid groups")
         return type(self)(
             tuple(groups),
             operations=[],
-            past_operations=(*self.past_operations, *operations),
         )
 
     @classmethod
