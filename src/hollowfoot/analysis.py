@@ -25,7 +25,7 @@ class Operation:
     bound_arguments: BoundArguments | None = None
 
 
-def operation(desc: str):
+def operation(desc: str, defer=True):
     """A decorator that"""
 
     def wrapper(fn: OperatorFunction):
@@ -36,7 +36,10 @@ def operation(desc: str):
                 groups=analysis.groups,
                 operations=(*analysis.operations, new_operation),
             )
-            return new_analysis
+            if defer:
+                return new_analysis
+            else:
+                return new_analysis.calculate()
 
         return inner
 
@@ -61,15 +64,12 @@ class Analysis:
         operations = self.operations
         for op in self.operations:
             op.bound_arguments = signature(op.func).bind(groups, *op.args, **op.kwargs)
-            print(op)
-            groups = op.func(groups, *op.args, **op.kwargs)
+            groups = list(op.func(groups, *op.args, **op.kwargs))
+            # Keep track of the operations that have already been performed on the groups
+            for group in groups:
+                past_operations = getattr(group, "past_operations", ())
+                group.past_operations = (*past_operations, op)
         groups = tuple(groups)
-        # Keep track of the operations that have already been performed on the groups
-        for group in groups:
-            group.past_operations = (
-                *getattr(group, "past_operations", ()),
-                *operations,
-            )
         if len(groups) == 0:
             warnings.warn(f"Operation {op} produced 0 valid groups")
         return type(self)(
