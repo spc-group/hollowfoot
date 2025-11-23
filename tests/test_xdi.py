@@ -1,18 +1,14 @@
 from pathlib import Path
 
+import numpy as np
 import pytest
 
-from hollowfoot.xdi import Role, version_pattern, xdi_to_tokens
-
-# def test_lexxer_line_count():
-#     with open(Path(__file__).parent / "example.xdi", mode='r') as fp:
-#         lines = xdi_to_lines(fp.read())
-#     assert len(lines) == 170
+from hollowfoot.xdi import Role, Token, parse, tokenize, version_pattern
 
 
-def test_xdi_to_tokens():
+def test_tokenizer():
     with open(Path(__file__).parent / "example.xdi", mode="r") as fp:
-        tokens = list(xdi_to_tokens(fp.read()))
+        tokens = list(tokenize(fp.read()))
 
     assert tokens[0].role == Role.VERSION
     assert tokens[0].value == "XDI/1.0"
@@ -63,4 +59,54 @@ def test_version_pattern(text, count):
         versions = [grp1, *grp2.strip().split(" ")]
         versions = [version for version in versions if version != ""]
         assert len(versions) == count
-    # assert False
+
+
+def test_parse_version():
+    dataset = parse([Token("XDI/1.0", Role.VERSION)])
+    assert dataset.attrs["xdi_version"] == "1.0"
+
+
+def test_parse_header():
+    dataset = parse(
+        [
+            Token("XDI/1.0", Role.VERSION),
+            Token("Mono.d_spacing", Role.HEADER_NAME),
+            Token("3.687", Role.HEADER_VALUE),
+        ]
+    )
+    assert dataset.attrs["header"]["Mono.d_spacing"] == "3.687"
+
+
+def test_parse_user_comment():
+    dataset = parse(
+        [
+            Token("XDI/1.0", Role.VERSION),
+            Token("spam", Role.USER_COMMENT),
+            Token("and eggs", Role.USER_COMMENT),
+        ]
+    )
+    assert dataset.attrs["user_comment"] == "spam\nand eggs"
+
+
+def test_parse_column_labels():
+    tokens = [
+        Token("XDI/1.0", Role.VERSION),
+        Token("mono-energy", Role.COLUMN_LABEL),
+        Token("It-net_count", Role.COLUMN_LABEL),
+    ]
+    dataset = parse(tokens)
+    assert list(dataset.coords.keys()) == ["mono-energy"]
+    assert list(dataset.keys()) == ["It-net_count"]
+
+
+def test_parse_data():
+    tokens = [
+        Token("XDI/1.0", Role.VERSION),
+        Token("mono-energy", Role.COLUMN_LABEL),
+        Token("It-net_count", Role.COLUMN_LABEL),
+        Token("8333.0", Role.DATUM),
+        Token("54893992", Role.DATUM),
+    ]
+    dataset = parse(tokens)
+    np.testing.assert_equal(dataset["mono-energy"].values, [8333.0])
+    np.testing.assert_equal(dataset["It-net_count"].values, [54893992])

@@ -17,6 +17,7 @@ keywords = []
 dependencies = [
     "numpy",
     "xraylarch",
+    "xarray",
 ]
 
 [dependency-groups]
