@@ -71,7 +71,7 @@ $ uv run --dev pytest
 
 ## XAS Data Interchange Format (XDI)
 
-*Hollowfoot* includes an Xarray backend for loading `.xdi` files.l
+*Hollowfoot* includes an Xarray backend for loading `.xdi` files.
 
 The easiest way to import XDI files is with `xarray.open_dataset()`:
 
