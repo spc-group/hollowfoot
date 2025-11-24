@@ -67,3 +67,29 @@ $ pip install hollowfoot
 ```bash
 $ uv run --dev pytest
 ```
+
+# File Format Support
+
+## XAS Data Interchange Format (XDI)
+
+*Hollowfoot* includes an Xarray backend for loading `.xdi` files.l
+
+The easiest way to import XDI files is with `xarray.open_dataset()`:
+
+```python
+import xarray as xr
+
+run = xr.open_dataset("example.xdi")
+```
+
+It is also possible to load XDI data from a string using ``hollowfoot.xdi.load()``:
+
+```python
+import hollowfoot as hf
+
+with open("tests/example.xdi") as fp:
+    hf.xdi.load(fp.read())
+```
+
+The ability to **write and array back to an XDI file** is in
+development and coming soon.

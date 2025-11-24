@@ -3,9 +3,11 @@ import re
 from collections.abc import Generator, Iterable
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Any
 
 import xarray as xr
+from xarray.backends import BackendEntrypoint
 
 
 class XDIMalformed(Exception):
@@ -104,7 +106,10 @@ def parse(tokens: Iterable[Token]) -> xr.Dataset:
             token = next(tokens_)
         except StopIteration:
             break
-        if token.role == Role.HEADER_NAME:
+        if token.role == Role.VERSION:
+            package, version = token.value.split("/")
+            attrs.setdefault("version", {})[package] = version
+        elif token.role == Role.HEADER_NAME:
             # Header name, so next token should be the value
             headers = attrs.setdefault("header", {})
             headers[token.value] = next(tokens_).value
@@ -134,3 +139,33 @@ def parse(tokens: Iterable[Token]) -> xr.Dataset:
         data_vars=data_vars,
         attrs=attrs,
     )
+
+
+def load(xdi_text: str) -> xr.Dataset:
+    tokens = tokenize(xdi_text)
+    dataset = parse(tokens)
+    return dataset
+
+
+class XDIBackendEntrypoint(BackendEntrypoint):
+    def open_dataset(
+        self,
+        filename_or_obj,
+        *,
+        drop_variables=None,
+        # other backend specific keyword arguments
+        # `chunks` and `cache` DO NOT go here, they are handled by xarray
+    ):
+        with open(filename_or_obj) as fp:
+            dataset = load(fp.read())
+        return dataset
+
+    open_dataset_parameters = ["filename_or_obj", "drop_variables"]
+
+    def guess_can_open(self, filename_or_obj):
+        ext = Path(filename_or_obj).suffix
+        return ext in {".xdi"}
+
+    description = "Use .xdi files in Xarray"
+
+    # url = "https://link_to/your_backend/documentation"

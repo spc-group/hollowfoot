@@ -29,6 +29,9 @@ Homepage = "https://github.com/spc-group/hollowfoot"
 [project.scripts]
 # command = "hollowfoot.__main__:main"
 
+[project.entry-points."xarray.backends"]
+xdi = "hollowfoot.xdi:XDIBackendEntrypoint"
+
 [build-system]
 build-backend = "hatchling.build"
 requires = ["hatchling"]

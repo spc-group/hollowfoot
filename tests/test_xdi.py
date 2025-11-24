@@ -2,41 +2,41 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import xarray as xr
 
-from hollowfoot.xdi import Role, Token, parse, tokenize, version_pattern
+from hollowfoot.xdi import (
+    Role,
+    Token,
+    XDIBackendEntrypoint,
+    load,
+    parse,
+    tokenize,
+    version_pattern,
+)
+
+xdi_path = Path(__file__).parent / "example.xdi"
 
 
 def test_tokenizer():
-    with open(Path(__file__).parent / "example.xdi", mode="r") as fp:
+    with open(xdi_path, mode="r") as fp:
         tokens = list(tokenize(fp.read()))
 
     assert tokens[0].role == Role.VERSION
     assert tokens[0].value == "XDI/1.0"
-    assert tokens[1].role == Role.HEADER_NAME
-    assert tokens[1].value == "Column.1"
-    assert tokens[31].role == Role.USER_COMMENT
-    assert tokens[31].value == "Goal: do some measurements"
-    expected_columns = [
-        "I0_ds-count",
-        "It_ds-count",
-        "Iref_ds-count",
-        "Ipreslit-count",
-        "IpreKB_ds-count",
-        "I0_ds-count_rate",
-        "It_ds-count_rate",
-        "Iref_ds-count_rate",
-        "Ipreslit-count_rate",
-        "monochromator-bragg",
-        "IpreKB_ds-count_rate",
-        "monochromator-energy",
-    ]
-    column_labels = tokens[32:44]
+    assert tokens[1].role == Role.VERSION
+    assert tokens[1].value == "GSE/1.0"
+    assert tokens[2].role == Role.HEADER_NAME
+    assert tokens[2].value == "Column.1"
+    assert tokens[46].role == Role.USER_COMMENT
+    assert tokens[46].value == "Cu foil Room Temperature"
+    expected_columns = ["energy", "i0", "itrans", "mutrans"]
+    column_labels = tokens[48:52]
     assert [col.role for col in column_labels] == [Role.COLUMN_LABEL] * len(
         expected_columns
     )
     assert [col.value for col in column_labels] == expected_columns
-    assert tokens[44].role == Role.DATUM
-    assert tokens[44].value == "395896964.3102694"
+    assert tokens[52].role == Role.DATUM
+    assert tokens[52].value == "8779.0"
 
 
 version_lines = [
@@ -62,8 +62,9 @@ def test_version_pattern(text, count):
 
 
 def test_parse_version():
-    dataset = parse([Token("XDI/1.0", Role.VERSION)])
+    dataset = parse([Token("XDI/1.0", Role.VERSION), Token("GSE/1.3", Role.VERSION)])
     assert dataset.attrs["xdi_version"] == "1.0"
+    assert dataset.attrs["version"]["GSE"] == "1.3"
 
 
 def test_parse_header():
@@ -110,3 +111,17 @@ def test_parse_data():
     dataset = parse(tokens)
     np.testing.assert_equal(dataset["mono-energy"].values, [8333.0])
     np.testing.assert_equal(dataset["It-net_count"].values, [54893992])
+
+
+def test_load():
+    with open(xdi_path, mode="r") as fp:
+        dataset = load(fp.read())
+    assert isinstance(dataset, xr.Dataset)
+    assert dataset.attrs["header"]["Facility.xray_source"] == "APS Undulator A"
+
+
+def test_xarray_plugin():
+    assert XDIBackendEntrypoint().guess_can_open(xdi_path)
+    dataset = xr.open_dataset(xdi_path)
+    assert isinstance(dataset, xr.Dataset)
+    assert dataset.attrs["header"]["Facility.xray_source"] == "APS Undulator A"
