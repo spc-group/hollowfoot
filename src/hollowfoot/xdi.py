@@ -1,3 +1,22 @@
+"""This module holds tools for parsing text formatted in the XAS data
+interchange format.
+
+For details of the specification, see:
+https://github.com/XraySpectroscopy/XAS-Data-Interchange/
+
+Forward parsing takes place in two steps:
+
+1. Convert text into tokens (``tokenize()``)
+2. Parse the tokens into a dataset (``parse()``)
+
+These steps are combine in the ``load()`` function.
+
+For going in the other direction, use ``dump()``.
+
+"""
+
+__all__ = ["load", "dump"]
+
 import ast
 import re
 from collections.abc import Generator, Iterable
@@ -90,6 +109,7 @@ def tokenize(text: str) -> Generator[Token]:
 
 
 def parse(tokens: Iterable[Token]) -> xr.Dataset:
+    """Convert tokens from ``tokenize()`` into a dataset."""
     tokens_ = iter(tokens)
     attrs: dict[str, Any] = {}
     labels = []
@@ -108,7 +128,7 @@ def parse(tokens: Iterable[Token]) -> xr.Dataset:
             break
         if token.role == Role.VERSION:
             package, version = token.value.split("/")
-            attrs.setdefault("version", {})[package] = version
+            attrs.setdefault("versions", {})[package] = version
         elif token.role == Role.HEADER_NAME:
             # Header name, so next token should be the value
             headers = attrs.setdefault("header", {})
@@ -142,12 +162,49 @@ def parse(tokens: Iterable[Token]) -> xr.Dataset:
 
 
 def load(xdi_text: str) -> xr.Dataset:
+    """Convert an XDI formatted string to an Xarray.
+
+    Non-data parts of the XDI file are included in the dataset's
+    ``attrs`` attribute. Namely:
+
+    "xdi_version"
+      Holds the XDI version specifier, e.g. ``"1.0"``
+    "versions"
+      Mapping of package names to version specifiers,
+      e.g. ``{"GSE":"1.0"}``.
+    "header"
+      A mapping of header names to values,
+      e.g. ``{"Column.1": "energy eV"}``
+    "user_comment"
+      Free form text that will go in the user comment section of the
+      XDI output.
+
+    The array labels are taken from the column labels section of the
+    XDI text. Headers like ``"Column.1"`` are left as is in the
+    *dataset*; it is left up to the client to interpret these headers properly.
+
+    Parameters
+    ==========
+    xdi_text
+      A string representing the input dataset in XDI format, suitable
+      for passing the an open file objects ``.write()`` method.
+
+    Returns
+    =======
+    dataset
+      An Xarray dataset with the data to save.
+
+    """
     tokens = tokenize(xdi_text)
     dataset = parse(tokens)
     return dataset
 
 
 class XDIBackendEntrypoint(BackendEntrypoint):
+    description = "Use .xdi files in Xarray"
+    url = "https://github.com/spc-group/hollowfoot?tab=readme-ov-file#xas-data-interchange-format-xdi"
+    open_dataset_parameters = ["filename_or_obj", "drop_variables"]
+
     def open_dataset(
         self,
         filename_or_obj,
@@ -160,12 +217,67 @@ class XDIBackendEntrypoint(BackendEntrypoint):
             dataset = load(fp.read())
         return dataset
 
-    open_dataset_parameters = ["filename_or_obj", "drop_variables"]
-
     def guess_can_open(self, filename_or_obj):
         ext = Path(filename_or_obj).suffix
         return ext in {".xdi"}
 
-    description = "Use .xdi files in Xarray"
 
-    # url = "https://link_to/your_backend/documentation"
+def dump(dataset: xr.Dataset) -> str:
+    """Convert an Xarray to an XDI formatted string.
+
+    Depends on the xarray having the correct attrs to produce an XDI file. Namely:
+
+    "xdi_version"
+      Holds the XDI version specifier, e.g. ``"1.0"``
+    "versions"
+      Mapping of package names to version specifiers,
+      e.g. ``{"GSE":"1.0"}``.
+    "header"
+      A mapping of header names to values,
+      e.g. ``{"Column.1": "energy eV"}``
+    "user_comment"
+      Free form text that will go in the user comment section of the
+      XDI output.
+
+    The column labels section is taken from the names of the arrays in
+    the dataset. It is up to the client to ensure that headers like
+    ``"Column.1"`` match the labels of the array.
+
+    Parameters
+    ==========
+    dataset
+      An Xarray dataset with the data to save.
+
+    Returns
+    =======
+    xdi
+      A string representing the input dataset in XDI format, suitable
+      for passing the an open file objects ``.write()`` method.
+
+    """
+    # Version specifiers
+    xdi_version = f"# XDI/{dataset.attrs['xdi_version']}"
+    other_versions = [
+        f"{name}/{version}" for name, version in dataset.attrs["versions"].items()
+    ]
+    lines = [" ".join([*(xdi_version, *other_versions)])]
+    # Header metadata
+    headers = dataset.attrs.get("header", {})
+    lines.extend([f"# {key}: {val}" for key, val in headers.items()])
+    # User comments section
+    user_comment = dataset.attrs.get("user_comment", "").strip()
+    if bool(user_comment):
+        lines.append("# /////")
+        lines.extend([f"# {line}" for line in user_comment.split("\n")])
+    # Column headers
+    lines.append("# -----")
+    labels = [*dataset.coords.keys(), *dataset.data_vars.keys()]
+    lines.append(f"# {' '.join(labels)}")
+    # Data in tab-separated format
+    df = dataset.to_pandas().reset_index()
+    data_rows = df.to_csv(sep="\t", header=False, index=False).split("\n")
+    data_rows = [f"  {row}" for row in data_rows]
+    lines.extend(data_rows)
+    # Clean up the file ending (make sure there's a newline)
+    text = "\n".join(lines).rstrip() + "\n"
+    return text

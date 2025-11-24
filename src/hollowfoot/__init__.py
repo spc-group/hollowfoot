@@ -1,3 +1,4 @@
+from . import xdi as xdi
 from .analysis import Analysis, operation  # noqa: F401
 from .group import Group  # noqa: F401
 from .xafs_analysis import XAFSAnalysis  # noqa: F401

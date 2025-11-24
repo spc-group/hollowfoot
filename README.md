@@ -62,7 +62,6 @@ $ pip install hollowfoot
 ```
 
 ## Running the Tests
------------------
 
 ```bash
 $ uv run --dev pytest
@@ -79,7 +78,7 @@ The easiest way to import XDI files is with `xarray.open_dataset()`:
 ```python
 import xarray as xr
 
-run = xr.open_dataset("example.xdi")
+dataset = xr.open_dataset("example.xdi")
 ```
 
 It is also possible to load XDI data from a string using ``hollowfoot.xdi.load()``:
@@ -88,8 +87,13 @@ It is also possible to load XDI data from a string using ``hollowfoot.xdi.load()
 import hollowfoot as hf
 
 with open("tests/example.xdi") as fp:
-    hf.xdi.load(fp.read())
+    dataset = hf.xdi.load(fp.read())
 ```
 
-The ability to **write and array back to an XDI file** is in
-development and coming soon.
+It is also possible to **convert a dataset back to XDI**:
+
+```python
+# This example overwrites existing files, be careful!
+with open("new_file.xdi", mode='w') as fp:
+    fp.write(hf.xdi.dump(dataset))
+```
