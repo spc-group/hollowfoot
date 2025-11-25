@@ -258,7 +258,8 @@ def dump(dataset: xr.Dataset) -> str:
     # Version specifiers
     xdi_version = f"# XDI/{dataset.attrs['xdi_version']}"
     other_versions = [
-        f"{name}/{version}" for name, version in dataset.attrs["versions"].items()
+        f"{name}/{version}"
+        for name, version in dataset.attrs.get("versions", {}).items()
     ]
     lines = [" ".join([*(xdi_version, *other_versions)])]
     # Header metadata

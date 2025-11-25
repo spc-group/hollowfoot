@@ -212,3 +212,13 @@ def test_dump():
     # Make sure there a trailing newline
     assert lines[-2] == "  8889.0\t117185.7\t443658.11566\t-1.3312944"
     assert lines[-1] == ""
+
+
+def test_dump_sparse_dataset():
+    """What is the minimal set of parameters that can still create valid XDI."""
+    sparse_dataset = xr.Dataset(
+        coords={},
+        attrs={"xdi_version": "1.0"},
+    )
+    xdi = dump(sparse_dataset)
+    assert xdi == "# XDI/1.0\n# -----\n#\n"
